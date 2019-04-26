@@ -10,5 +10,5 @@ Initial algorithms including:
  - t-digest.
  - leaky bucket.
 
- */
+*/
 package gstream
