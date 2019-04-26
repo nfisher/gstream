@@ -1,6 +1,8 @@
 package pearson
 
 import (
+	crand "crypto/rand"
+	"encoding/binary"
 	"hash"
 	"math/rand"
 )
@@ -37,14 +39,24 @@ func (p *Pearson) Size() int { return p.sz }
 
 func (p *Pearson) BlockSize() int { return 0 }
 
-func New(sz int, seed int64) hash.Hash {
-	rand.Seed(seed)
+func New(sz int) hash.Hash {
 	h := &Pearson{
 		sz:    sz,
 		table: table(256),
 	}
 
 	return h
+}
+
+// ick... not sure how I feel about this but eliminates the seed value from new...
+func init() {
+	var b [8]byte
+	_, err := crand.Read(b[:])
+	if err != nil {
+		panic(err.Error())
+	}
+	seed, _ := binary.Varint(b[:])
+	rand.Seed(seed)
 }
 
 func table(sz int) []byte {
