@@ -16,6 +16,7 @@ func Test_sum(t *testing.T) {
 		out []byte
 	}{
 		"1 byte hash": {h(1), []byte("Hello world!!!"), []byte{85}},
+		"8 byte hash": {h(8), []byte("Hello world!!!"), []byte{85, 241, 106, 61, 154, 39, 190, 155}},
 		"16 byte hash": {h(16), []byte("Hello world!!!"), []byte{85, 241, 106, 61, 154, 39, 190, 155, 203, 108, 86, 4, 188, 121, 163, 215}},
 	}
 

@@ -7,6 +7,17 @@ import (
 	"math/rand"
 )
 
+// New creates a Pearson hash with a randomised byte table.
+func New(sz int) hash.Hash {
+	h := &Pearson{
+		sz:    sz,
+		table: table(256),
+	}
+
+	return h
+}
+
+// Pearson is a variable length pearson hashing algorithm.
 type Pearson struct {
 	sz    int
 	table []byte
@@ -38,15 +49,6 @@ func (p *Pearson) Reset() {}
 func (p *Pearson) Size() int { return p.sz }
 
 func (p *Pearson) BlockSize() int { return 0 }
-
-func New(sz int) hash.Hash {
-	h := &Pearson{
-		sz:    sz,
-		table: table(256),
-	}
-
-	return h
-}
 
 // ick... not sure how I feel about this but eliminates the seed value from new...
 func init() {
