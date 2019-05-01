@@ -1,14 +1,12 @@
-package gstream_test
+package countmin_test
 
 import (
 	"encoding/csv"
+	"github.com/nfisher/gstream/countmin"
 	"hash"
-	"io"
-	"math"
 	"math/rand"
 	"os"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/nfisher/gstream/hash/murmur2"
@@ -35,7 +33,7 @@ func Test_open(t *testing.T) {
 				t.Fatal(err.Error())
 			}
 
-			cm := New(1000, 4, tc.nh)
+			cm := countmin.New(1000, 4, tc.nh)
 
 			m := make(map[string]uint64)
 			var record []string
@@ -77,7 +75,7 @@ func Test_open(t *testing.T) {
 }
 
 func fifaReader() (*csv.Reader, error) {
-	f, err := os.Open("testdata/fifa.csv")
+	f, err := os.Open("../testdata/fifa.csv")
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +87,7 @@ func fifaReader() (*csv.Reader, error) {
 
 func Test_count(t *testing.T) {
 	td := map[string]struct {
-		*CountMin
+		*countmin.CountMin
 		key   string
 		count uint64
 	}{
@@ -130,80 +128,12 @@ func Benchmark_count(b *testing.B) {
 	CountBench = count
 }
 
-func cm(fn func() hash.Hash64, d int, keys ...string) *CountMin {
+func cm(fn func() hash.Hash64, d int, keys ...string) *countmin.CountMin {
 	rand.Seed(1556608494)
-	cm := New(1024, d, fn)
+	cm := countmin.New(1024, d, fn)
 	for _, k := range keys {
 		cm.Add(k)
 	}
 	return cm
 }
 
-// New creates a new CountMin struct for approximately counting distinct string elements.
-func New(w, d int, fn func() hash.Hash64) *CountMin {
-	sz := w * d
-	cm := &CountMin{
-		w:     uint64(w),
-		d:     d,
-		table: make([]uint64, sz, sz),
-		hash:  make([]hash.Hash64, d, d),
-	}
-
-	for i := 0; i < d; i++ {
-		cm.hash[i] = fn()
-	}
-
-	return cm
-}
-
-type CountMin struct {
-	// w is the width and number of cells per function in the sketch.
-	w uint64
-	// d is the depth and number of hash functions in the sketch.
-	d int
-	// table is the w*d table of values.
-	table []uint64
-	// hash is the d hash functions to be applied.
-	hash []hash.Hash64
-}
-
-func (cm *CountMin) Add(s string) {
-	w := cm.w
-	for i, h := range cm.hash {
-		buf := strings.NewReader(s)
-		_, err := io.Copy(h, buf)
-		if err != nil {
-			panic(err.Error())
-		}
-		u := h.Sum64()
-		h.Reset()
-		idx := u%w + uint64(i)*w
-		cm.table[idx]++
-	}
-}
-
-func (cm *CountMin) Count(s string) uint64 {
-	w := cm.w
-	var count uint64 = math.MaxUint64
-	for i, h := range cm.hash {
-		buf := strings.NewReader(s)
-		_, err := io.Copy(h, buf)
-		if err != nil {
-			panic(err.Error())
-		}
-		u := h.Sum64()
-		h.Reset()
-
-		idx := u%w + uint64(i)*w
-		cur := cm.table[idx]
-		if cur < count {
-			count = cur
-		}
-	}
-
-	if count == math.MaxUint64 {
-		count = 0
-	}
-
-	return count
-}
