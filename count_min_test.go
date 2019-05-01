@@ -93,12 +93,9 @@ func Test_count(t *testing.T) {
 		key   string
 		count uint64
 	}{
-		"no entry":                   {cm(1), "none", 0},
-		"matched entry":              {cm(1, "match"), "match", 1},
-		"unmatched entry":            {cm(1, "match"), "none", 0},
-		"multi hash no entry":        {cm(4), "none", 0},
-		"multi hash matched entry":   {cm(4, "match"), "match", 1},
-		"multi hash unmatched entry": {cm(4, "match"), "none", 0},
+		"no entry":        {cm(murmur2.New64a, 4), "none", 0},
+		"matched entry":   {cm(murmur2.New64a, 4, "match"), "match", 1},
+		"unmatched entry": {cm(murmur2.New64a, 4, "match"), "none", 0},
 		// TODO: find keys with collisions in only 1 of the hash families.
 	}
 
@@ -115,7 +112,7 @@ func Test_count(t *testing.T) {
 var AddCount uint64
 
 func Benchmark_add(b *testing.B) {
-	cm := cm(8)
+	cm := cm(murmur2.New64a, 8)
 	for i := 0; i < b.N; i++ {
 		cm.Add("hello world")
 	}
@@ -126,16 +123,16 @@ var CountBench uint64
 
 func Benchmark_count(b *testing.B) {
 	var count uint64
-	cm := cm(8, "hello world")
+	cm := cm(murmur2.New64a, 8, "hello world")
 	for i := 0; i < b.N; i++ {
 		count = cm.Count("hello world")
 	}
 	CountBench = count
 }
 
-func cm(d int, keys ...string) *CountMin {
+func cm(fn func() hash.Hash64, d int, keys ...string) *CountMin {
 	rand.Seed(1556608494)
-	cm := New(1024, d, pearson.New64)
+	cm := New(1024, d, fn)
 	for _, k := range keys {
 		cm.Add(k)
 	}
