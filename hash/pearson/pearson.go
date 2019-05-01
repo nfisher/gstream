@@ -7,48 +7,62 @@ import (
 	"math/rand"
 )
 
-// New creates a Pearson hash with a randomised byte table.
-func New(sz int) hash.Hash {
-	h := &Pearson{
-		sz:    sz,
-		table: table(256),
+func New64() hash.Hash64 {
+	p := &Pearson{
+		sz:    8,
+		table: shuffledTable(tableSize),
 	}
+	p.Reset()
 
-	return h
+	return p
 }
 
 // Pearson is a variable length pearson hashing algorithm.
 type Pearson struct {
 	sz    int
 	table []byte
+	hh    []byte
+	wrote int
 }
 
 func (p *Pearson) Sum(msg []byte) []byte {
+	return nil
+}
+
+func (p *Pearson) Sum64() uint64 {
+	return binary.LittleEndian.Uint64(p.hh)
+}
+
+func (p *Pearson) Write(msg []byte) (int, error) {
+	// TODO: ensure multiple calls works correctly.
 	tLen := len(p.table)
-	hh := make([]byte, p.sz, p.sz)
 
 	for j := 0; j < p.sz; j++ {
-		var z = int(msg[0])
+		var z int
+		if len(msg) > 0 {
+			z = int(msg[0])
+		}
 		h := p.table[(z+j)%tLen]
-		hh[j] = h
+		p.hh[j] = h
 	}
 
 	for i := 1; i < len(msg); i++ {
 		for j := 0; j < p.sz; j++ {
-			hh[j] = p.table[int(hh[j]^msg[i])]
+			p.hh[j] = p.table[int(p.hh[j]^msg[i])]
 		}
 	}
 
-	return hh
+	return len(msg), nil
 }
 
-func (p *Pearson) Write(b []byte) (int, error) { return 0, nil }
-
-func (p *Pearson) Reset() {}
+func (p *Pearson) Reset() {
+	p.hh = make([]byte, p.sz, p.sz)
+	p.wrote = 0
+}
 
 func (p *Pearson) Size() int { return p.sz }
 
-func (p *Pearson) BlockSize() int { return 0 }
+func (p *Pearson) BlockSize() int { return 1 }
 
 // ick... not sure how I feel about this but eliminates the seed value from new...
 func init() {
@@ -57,11 +71,11 @@ func init() {
 	if err != nil {
 		panic(err.Error())
 	}
-	seed, _ := binary.Varint(b[:])
+	var seed = int64(binary.LittleEndian.Uint64(b[:]))
 	rand.Seed(seed)
 }
 
-func table(sz int) []byte {
+func shuffledTable(sz int) []byte {
 	var b = make([]byte, 0, sz)
 	for i := 0; i < sz; i++ {
 		b = append(b, byte(i))
@@ -73,3 +87,5 @@ func table(sz int) []byte {
 
 	return b
 }
+
+const tableSize = 256
