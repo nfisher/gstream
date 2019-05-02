@@ -190,18 +190,18 @@ int CM_InnerProd(CM_type * cm1, CM_type * cm2)
   int i,j, tmp, result;
 
   result=0;
-  if (CM_Compatible(cm1,cm2))
-    {
-      for (i=0;i<cm1->width;i++)
-	result+=cm1->counts[0][i]*cm2->counts[0][i];
-      for (j=1;j<cm1->depth;j++)
-	{
-	  tmp=0;
-	  for (i=0;i<cm1->width;i++)
-	    tmp+=cm1->counts[j][i]*cm2->counts[j][i];
-	  result=min(tmp,result);
-	}
-    }
+  if (CM_Compatible(cm1,cm2)) {
+      for (i=0;i<cm1->width;i++) {
+            result+=cm1->counts[0][i]*cm2->counts[0][i];
+            for (j=1;j<cm1->depth;j++) {
+                tmp=0;
+                for (i=0;i<cm1->width;i++) {
+                    tmp+=cm1->counts[j][i]*cm2->counts[j][i];
+                }
+                result=min(tmp,result);
+            }
+      }
+  }
   return result;
 }
 

@@ -1,14 +1,31 @@
 /*
 Package gstream provides a selection of stream processing algorithm implementations.
 
-Initial algorithms including:
+Initial algorithms to be included:
 
- - count-min.
- - HyperLogLog.
- - bloom filter.
- - k-means.
- - t-digest.
- - leaky bucket.
+"""
+ * count-min.
+	DONE
+	 - Merge.
+	 - PointEst.
+	 - Update.
+	WIP
+	 - InnerProd.
+	TBD
+	 - PointEstMed.
+	 - Residue.
+ - Count-Min leaky bucket
+	TBD
+	 - Top N retaining keys.
+ - HyperLogLog
+	TBD
+ - bloom filter
+	TBD
+ - k-means
+	TBD
+ - t-digest
+	TBD
+"""
 
 */
 package gstream
