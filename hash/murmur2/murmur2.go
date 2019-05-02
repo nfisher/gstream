@@ -9,8 +9,12 @@ import (
 
 // New64a returns a MurmurHash64A hashing algorithm.
 func New64a() hash.Hash64 {
+	return New64aWithSeed(rand.Uint64())
+}
+
+func New64aWithSeed(seed uint64) hash.Hash64 {
 	return &Murmur64A{
-		seed: rand.Uint64(),
+		seed: seed,
 	}
 }
 
@@ -30,16 +34,16 @@ func (m *Murmur64A) Write(b []byte) (int, error) {
 func (m *Murmur64A) Sum(b []byte) []byte { return nil }
 
 // Reset resets the Hash to its initial state.
-func (m *Murmur64A) Reset()         { m.sum = 0 }
+func (m *Murmur64A) Reset() { m.sum = 0 }
 
 // Size returns the number of bytes Sum will return.
-func (m *Murmur64A) Size() int      { return 8 }
+func (m *Murmur64A) Size() int { return 8 }
 
 // BlockSize returns the hash's underlying block size.
 func (m *Murmur64A) BlockSize() int { return 8 }
 
 // Sum64 returns the hash's 64 bit sum.
-func (m *Murmur64A) Sum64() uint64  { return m.sum }
+func (m *Murmur64A) Sum64() uint64 { return m.sum }
 
 const m uint64 = 0xc6a4a7935bd1e995
 const r = 47

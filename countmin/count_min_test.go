@@ -2,21 +2,61 @@ package countmin_test
 
 import (
 	"encoding/csv"
-	"github.com/nfisher/gstream/countmin"
 	"hash"
 	"math/rand"
 	"os"
 	"sort"
 	"testing"
 
+	"github.com/nfisher/gstream/countmin"
 	"github.com/nfisher/gstream/hash/murmur2"
 	"github.com/nfisher/gstream/hash/pearson"
 )
 
-const (
-	FifaNationality = 5
-	FifaClub        = 9
-)
+func Test_merge_errors(t *testing.T) {
+	td := map[string]struct {
+		cms []*countmin.Sketch
+		err error
+	}{
+		"at least 2 required": {[]*countmin.Sketch{countmin.New(2, 2)}, countmin.ErrNotEnough},
+		"differing depth":     {[]*countmin.Sketch{countmin.New(2, 2), countmin.New(2, 4)}, countmin.ErrMixedDepth},
+		"differing width":     {[]*countmin.Sketch{countmin.New(2, 2), countmin.New(4, 2)}, countmin.ErrMixedWidth},
+		// TODO: err on mismatched seeds.
+	}
+
+	for name, tc := range td {
+		t.Run(name, func(t *testing.T) {
+			_, err := countmin.Merge(tc.cms...)
+			if err != tc.err {
+				t.Errorf("err = %v, want %v", err, tc.err)
+			}
+		})
+	}
+}
+
+func Test_merge(t *testing.T) {
+	cms := []*countmin.Sketch{
+		cm(murmur2.New64a, 4, "hello"),
+		cm(murmur2.New64a, 4, "bye"),
+	}
+
+	combined, err := countmin.Merge(cms...)
+	if err != nil {
+		t.Errorf("err = %v, want nil", err)
+	}
+
+	if combined.Sum() != 8 {
+		t.Errorf("Sum = %v, want 8", combined.Sum())
+	}
+
+	if combined.PointEst("hello") != 1 {
+		t.Errorf("PointEst(hello) = %v, want 1", combined.PointEst("hello"))
+	}
+
+	if combined.PointEst("bye") != 1 {
+		t.Errorf("PointEst(bye) = %v, want 1", combined.PointEst("bye"))
+	}
+}
 
 func Test_open(t *testing.T) {
 	td := map[string]struct {
@@ -33,7 +73,7 @@ func Test_open(t *testing.T) {
 				t.Fatal(err.Error())
 			}
 
-			cm := countmin.New(1000, 4, tc.nh)
+			cm := countmin.NewWithHash64(1000, 4, tc.nh)
 
 			m := make(map[string]uint64)
 			var record []string
@@ -44,7 +84,7 @@ func Test_open(t *testing.T) {
 				}
 
 				name := record[FifaClub]
-				cm.Add(name)
+				cm.Update(name, 1)
 				v := m[name]
 				v++
 				m[name] = v
@@ -59,7 +99,7 @@ func Test_open(t *testing.T) {
 
 			var miscounts int
 			for _, club := range clubs {
-				actual := cm.Count(club)
+				actual := cm.PointEst(club)
 				expected := m[club]
 				if actual != expected {
 					miscounts++
@@ -74,20 +114,18 @@ func Test_open(t *testing.T) {
 	}
 }
 
-func fifaReader() (*csv.Reader, error) {
-	f, err := os.Open("../testdata/fifa.csv")
-	if err != nil {
-		return nil, err
+func Test_sum(t *testing.T) {
+	sketch := cm(murmur2.New64a, 4, "match", "pants", "shorts")
+	actual := sketch.Sum()
+	var expected uint64 = 12
+	if actual != expected {
+		t.Errorf("Sum = %v, want %v", actual, expected)
 	}
-
-	r := csv.NewReader(f)
-
-	return r, nil
 }
 
-func Test_count(t *testing.T) {
+func Test_point_estimate(t *testing.T) {
 	td := map[string]struct {
-		*countmin.CountMin
+		*countmin.Sketch
 		key   string
 		count uint64
 	}{
@@ -99,9 +137,9 @@ func Test_count(t *testing.T) {
 
 	for n, tc := range td {
 		t.Run(n, func(t *testing.T) {
-			actual := tc.Count(tc.key)
+			actual := tc.PointEst(tc.key)
 			if actual != tc.count {
-				t.Errorf("Count(%v) = %v, want %v", tc.key, actual, tc.count)
+				t.Errorf("PointEst(%v) = %v, want %v", tc.key, actual, tc.count)
 			}
 		})
 	}
@@ -112,28 +150,43 @@ var AddCount uint64
 func Benchmark_add(b *testing.B) {
 	cm := cm(murmur2.New64a, 8)
 	for i := 0; i < b.N; i++ {
-		cm.Add("hello world")
+		cm.Update("hello world", 1)
 	}
-	AddCount = cm.Count("hello world")
+	AddCount = cm.PointEst("hello world")
 }
 
 var CountBench uint64
 
-func Benchmark_count(b *testing.B) {
+func Benchmark_point_estimate(b *testing.B) {
 	var count uint64
 	cm := cm(murmur2.New64a, 8, "hello world")
 	for i := 0; i < b.N; i++ {
-		count = cm.Count("hello world")
+		count = cm.PointEst("hello world")
 	}
 	CountBench = count
 }
 
-func cm(fn func() hash.Hash64, d int, keys ...string) *countmin.CountMin {
+func cm(fn func() hash.Hash64, d int, keys ...string) *countmin.Sketch {
 	rand.Seed(1556608494)
-	cm := countmin.New(1024, d, fn)
+	cm := countmin.NewWithHash64(1024, d, fn)
 	for _, k := range keys {
-		cm.Add(k)
+		cm.Update(k, 1)
 	}
 	return cm
 }
 
+func fifaReader() (*csv.Reader, error) {
+	f, err := os.Open("../testdata/fifa.csv")
+	if err != nil {
+		return nil, err
+	}
+
+	r := csv.NewReader(f)
+
+	return r, nil
+}
+
+const (
+	FifaNationality = 5
+	FifaClub        = 9
+)
