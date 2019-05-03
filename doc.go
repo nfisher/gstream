@@ -9,8 +9,8 @@ Initial algorithms to be included:
 	 - Merge.
 	 - PointEst.
 	 - Update.
-	WIP
 	 - InnerProd.
+	WIP
 	TBD
 	 - PointEstMed.
 	 - Residue.

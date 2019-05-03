@@ -16,10 +16,10 @@ func Test_inner_product(t *testing.T) {
 		k2      []string
 		product uint64
 	}{
-		"product of empty sketches": {[]string{}, []string{}, 0},
-		"product of s1 with entry": {[]string{"hello"}, []string{}, 0},
-		"product of s2 with entry": {[]string{}, []string{"hello"}, 0},
-		"product of s1 and s2 with entry": {[]string{"hello", "hello", "weak"}, []string{"hello", "weak", "weak"}, 4},
+		"should equal 0 with empty sketch": {[]string{}, []string{}, 0},
+		"should equal 0 with s2 empty":     {[]string{"hello"}, []string{}, 0},
+		"should equal 0 with s1 empty":     {[]string{}, []string{"hello"}, 0},
+		"should equal positive product":    {repeat("hello", 10), []string{"hello", "weak"}, 10},
 	}
 
 	for name, tc := range td {
@@ -29,12 +29,20 @@ func Test_inner_product(t *testing.T) {
 			s2 := countmin.NewWithSeeds(1024, 4, s1.Seeds)
 			add(s2, tc.k2...)
 
-			product := countmin.InnerProduct(s1, s2)
+			product, _ := countmin.InnerProduct(s1, s2)
 			if product != tc.product {
 				t.Errorf("product = %v, want %v", product, tc.product)
 			}
 		})
 	}
+}
+
+func repeat(s string, n int) []string {
+	var a []string
+	for i := 0; i < n; i++ {
+		a = append(a, s)
+	}
+	return a
 }
 
 func add(sketch *countmin.Sketch, keys ...string) {

@@ -41,8 +41,12 @@ func NewWithSeeds(w, d int, seeds []uint64) *Sketch {
 	return cm
 }
 
-func InnerProduct(s1 *Sketch, s2 *Sketch) uint64 {
-	// TODO: Add check for compatibility.
+func InnerProduct(s1 *Sketch, s2 *Sketch) (uint64, error) {
+	err := isCompatible(s1, s2)
+	if err != nil {
+		return 0, err
+	}
+
 	w := uint64(s1.Width)
 	d := s1.Depth
 	products := make([]uint64, s1.Depth, s1.Depth)
@@ -62,7 +66,7 @@ func InnerProduct(s1 *Sketch, s2 *Sketch) uint64 {
 		}
 	}
 
-	return min
+	return min, nil
 }
 
 // Merge combines the values into 2 or more Sketch structures into one.
@@ -178,6 +182,9 @@ func (cm *Sketch) PointMed() uint64 {
 }
 
 func isCompatible(sketch1 *Sketch, sketch2 *Sketch) error {
+	if sketch1 == nil || sketch2 == nil {
+		return ErrNilSketchIncompatible
+	}
 	if sketch1.Depth != sketch2.Depth {
 		return ErrMixedDepthIncompatible
 	}
@@ -205,4 +212,5 @@ var (
 	ErrCountOfSketchesInMerge   = errors.New("at least 2 structures are required to merge")
 	ErrCountOfSeedsIncompatible = errors.New("the number of Seeds should match Depth")
 	ErrSeedValuesIncompatible   = errors.New("the seed values are incompatible")
+	ErrNilSketchIncompatible    = errors.New("nil sketches are incompatible")
 )
