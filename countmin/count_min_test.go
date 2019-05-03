@@ -10,6 +10,39 @@ import (
 	"github.com/nfisher/gstream/countmin"
 )
 
+func Test_inner_product(t *testing.T) {
+	td := map[string]struct {
+		k1      []string
+		k2      []string
+		product uint64
+	}{
+		"product of empty sketches": {[]string{}, []string{}, 0},
+		"product of s1 with entry": {[]string{"hello"}, []string{}, 0},
+		"product of s2 with entry": {[]string{}, []string{"hello"}, 0},
+		"product of s1 and s2 with entry": {[]string{"hello", "hello", "weak"}, []string{"hello", "weak", "weak"}, 4},
+	}
+
+	for name, tc := range td {
+		t.Run(name, func(t *testing.T) {
+			s1 := countmin.New(1024, 4)
+			add(s1, tc.k1...)
+			s2 := countmin.NewWithSeeds(1024, 4, s1.Seeds)
+			add(s2, tc.k2...)
+
+			product := countmin.InnerProduct(s1, s2)
+			if product != tc.product {
+				t.Errorf("product = %v, want %v", product, tc.product)
+			}
+		})
+	}
+}
+
+func add(sketch *countmin.Sketch, keys ...string) {
+	for _, k := range keys {
+		sketch.Update(k, 1)
+	}
+}
+
 func Test_merge_errors(t *testing.T) {
 	td := map[string]struct {
 		sketches []*countmin.Sketch

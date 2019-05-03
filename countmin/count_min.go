@@ -27,7 +27,7 @@ func New(w, d int) *Sketch {
 func NewWithSeeds(w, d int, seeds []uint64) *Sketch {
 	sz := w * d
 	cm := &Sketch{
-		Width: uint64(w),
+		Width: w,
 		Depth: d,
 		Table: make([]uint64, sz, sz),
 		hash:  make([]hash.Hash64, d, d),
@@ -41,11 +41,20 @@ func NewWithSeeds(w, d int, seeds []uint64) *Sketch {
 	return cm
 }
 
-func InnerProduct(sketch1 *Sketch, sketch2 *Sketch) uint64 {
-	products := make([]uint64, sketch1.Depth, sketch1.Depth)
+func InnerProduct(s1 *Sketch, s2 *Sketch) uint64 {
+	// TODO: Add check for compatibility.
+	w := uint64(s1.Width)
+	d := s1.Depth
+	products := make([]uint64, s1.Depth, s1.Depth)
 	var min uint64 = math.MaxUint64
 
-	//	for , s1 := sketch1.
+	var i uint64
+	for i = 0; i < w; i++ {
+		for j := 0; j < d; j++ {
+			idx := index(i, j, s1.Width)
+			products[j] += s1.Table[idx] * s2.Table[idx]
+		}
+	}
 
 	for _, v := range products {
 		if v < min {
@@ -91,7 +100,7 @@ func Merge(sketches ...*Sketch) (*Sketch, error) {
 // Sketch is a CountMin sketch to probabilistically count keys.
 type Sketch struct {
 	// Width is the width and number of cells per function in the sketch.
-	Width uint64
+	Width int
 	// Depth is the depth and number of hash functions in the sketch.
 	Depth int
 	// Table is the Width*Depth Table of values.
@@ -123,7 +132,7 @@ func (cm *Sketch) Update(s string, delta int) {
 		u := h.Sum64()
 		h.Reset()
 
-		idx := u%w + uint64(i)*w
+		idx := index(u, i, w)
 
 		if delta > 0 {
 			cm.Table[idx] += uint64(delta)
@@ -131,6 +140,10 @@ func (cm *Sketch) Update(s string, delta int) {
 			cm.Table[idx] -= uint64(delta)
 		}
 	}
+}
+
+func index(cell uint64, group, width int) int {
+	return int(cell%uint64(width)) + group*width
 }
 
 // PointEst provides a point estimate for the given string.
@@ -146,7 +159,7 @@ func (cm *Sketch) PointEst(s string) uint64 {
 		u := h.Sum64()
 		h.Reset()
 
-		idx := u%w + uint64(i)*w
+		idx := index(u, i, w)
 		cur := cm.Table[idx]
 		if cur < count {
 			count = cur
